@@ -1,23 +1,23 @@
 /**
- * Notification API Service
+ * Notification API communication layer
+ * Just fetches data from the backend and logs what happens
  * 
- * Handles all API communication for fetching and searching notifications.
- * Implements graceful error handling by returning empty arrays on failure.
+ * If the API goes down, we return empty arrays - app should handle that gracefully
  */
 
-import { LogUtils } from "../../../logging_middleware";
+import { Log, LogUtils } from "../../../";
 import { Notification } from "../types/notification";
 
 const API_BASE_URL = "http://20.207.122.201/evaluation-service";
 const NOTIFICATIONS_ENDPOINT = `${API_BASE_URL}/notifications`;
 
 /**
- * Fetch all notifications from the backend API
- * @returns Promise resolving to array of notifications, or empty array on failure
+ * Fetch all notifications
+ * Returns empty array if anything goes wrong - let the UI handle it
  */
 export async function fetchNotifications(): Promise<Notification[]> {
   try {
-    await LogUtils.debug("service", "Fetching notifications from API");
+    await LogUtils.debug("service", "fetching notifications from API");
 
     const response = await fetch(NOTIFICATIONS_ENDPOINT, {
       method: "GET",
@@ -33,33 +33,37 @@ export async function fetchNotifications(): Promise<Notification[]> {
 
     const data = await response.json();
 
-    // Validate response structure
+    // Check if the response looks right
     if (!data.notifications || !Array.isArray(data.notifications)) {
-      await LogUtils.warn("service", "API response missing notifications array");
+      await LogUtils.warn("service", "API response looks weird, missing notifications array");
       return [];
     }
 
     const notifications: Notification[] = data.notifications;
-    await LogUtils.info("service", `Retrieved ${notifications.length} notifications`);
+    await LogUtils.info("service", `got ${notifications.length} notifications`);
 
     return notifications;
   } catch (error) {
-    const msg = error instanceof Error ? error.message : "Unknown error";
-    await LogUtils.error("service", `Fetch failed: ${msg}`, error instanceof Error ? error : undefined);
+    const msg = error instanceof Error ? error.message : "unknown error";
+    await LogUtils.error("service", `fetch failed: ${msg}`, error instanceof Error ? error : undefined);
     return [];
   }
 }
 
 /**
- * Fetch a single notification by its ID
- * @param id - Unique identifier of the notification
- * @returns Promise resolving to notification object or null if not found
+ * Fetch a single notification by ID
+ * 
+ * @param id - Notification ID
+ * @returns Notification object or null if not found
  */
 export async function fetchNotificationById(
   id: string
 ): Promise<Notification | null> {
   try {
-    await LogUtils.debug("service", `Fetching notification ID: ${id}`);
+    await LogUtils.debug(
+      "service",
+      `Fetching notification with ID: ${id}`
+    );
 
     const response = await fetch(`${NOTIFICATIONS_ENDPOINT}/${id}`, {
       method: "GET",
@@ -69,30 +73,41 @@ export async function fetchNotificationById(
     });
 
     if (!response.ok) {
-      await LogUtils.warn("service", `Notification ${id} not found (Status: ${response.status})");
+      await LogUtils.warn(
+        "service",
+        `Notification ${id} not found - Status: ${response.status}`
+      );
       return null;
     }
 
     const data = await response.json();
     const notification: Notification = data;
 
-    await LogUtils.info("service", `Fetched notification ${id} (Type: ${notification.Type})");
+    await LogUtils.info(
+      "service",
+      `Successfully fetched notification: ${id} | Type: ${notification.Type}`
+    );
 
     return notification;
   } catch (error) {
     const errorMsg =
       error instanceof Error ? error.message : "Unknown error";
-    await LogUtils.error("service", `Failed to fetch notification ${id}: ${errorMsg}`, error instanceof Error ? error : undefined);
+    await LogUtils.error(
+      "service",
+      `Failed to fetch notification ${id}: ${errorMsg}`,
+      error instanceof Error ? error : undefined
+    );
     return null;
   }
 }
 
 /**
- * Filter and search notifications by type and/or message content
+ * Filter and search notifications by type or message content
+ * 
  * @param notifications - Array of notifications to filter
- * @param searchTerm - Optional search term to filter messages (case-insensitive)
- * @param type - Optional notification type to filter by
- * @returns Promise resolving to filtered array of notifications
+ * @param searchTerm - Optional search term to filter messages
+ * @param type - Optional notification type filter
+ * @returns Filtered notifications
  */
 export async function searchNotifications(
   notifications: Notification[],
@@ -100,7 +115,12 @@ export async function searchNotifications(
   type?: string
 ): Promise<Notification[]> {
   try {
-    await LogUtils.debug("service", `Searching notifications (Term: ${searchTerm || "none"}, Type: ${type || "all"})");
+    await LogUtils.debug(
+      "service",
+      `Searching notifications | SearchTerm: ${searchTerm || "none"}, Type: ${
+        type || "all"
+      }`
+    );
 
     let filtered = notifications;
 
@@ -115,13 +135,20 @@ export async function searchNotifications(
       );
     }
 
-    await LogUtils.info("service", `Search completed: ${notifications.length} → ${filtered.length} notifications`);
+    await LogUtils.info(
+      "service",
+      `Search completed | Input: ${notifications.length}, Output: ${filtered.length}`
+    );
 
     return filtered;
   } catch (error) {
     const errorMsg =
       error instanceof Error ? error.message : "Unknown error";
-    await LogUtils.error("service", `Search failed: ${errorMsg}`, error instanceof Error ? error : undefined);
+    await LogUtils.error(
+      "service",
+      `Search operation failed: ${errorMsg}`,
+      error instanceof Error ? error : undefined
+    );
     return [];
   }
 }

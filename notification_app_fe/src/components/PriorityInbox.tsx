@@ -11,7 +11,7 @@ import { LogUtils } from "../../../logging_middleware";
 import * as notificationApi from "../services/notificationApi";
 import priorityCalculator from "../utils/priorityCalculator";
 import { PrioritizedNotification } from "../types/notification";
-import "./PriorityInbox.css";
+import  "./PriorityInbox.css";
 
 export const PriorityInbox: React.FC = () => {
   const [notifications, setNotifications] = useState<PrioritizedNotification[]>(
